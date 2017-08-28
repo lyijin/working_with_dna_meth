@@ -4,12 +4,13 @@ Studying the methylome of <insert cool organism>
 
 This pipeline relies on Bowtie2 for mapping, Bismark to do methylation calls, and my scripts to process the Bismark results, so get them installed before you follow the pipeline.
 
-Bowtie2: preferably installed via package manager ("apt install bowtie2").
-Bismark: https://www.bioinformatics.babraham.ac.uk/projects/bismark/, "Download Now".
+1. Bowtie2: preferably installed via package manager ("apt install bowtie2").
+
+2. Bismark: https://www.bioinformatics.babraham.ac.uk/projects/bismark/, "Download Now".
 
 Remember to cite both tools when you write your manuscript.
 
-python3: preferably installed via package manager ("apt install python3"). DO NOT USE PYTHON 2!!!
+3. python3: preferably installed via package manager ("apt install python3"). DO NOT USE PYTHON 2!!!
 
 Pipeline, TLDR
 --------------
@@ -18,16 +19,20 @@ Pipeline, TLDR
 3. Run ``deduplicate_bismark`` to remove duplicated reads (PCR artefacts).
 4. Run ``bismark_methylation_extractor`` to produce .cov files used in downstream analysis.
 5. Filter for methylated positions that are unlikely to arise due to chance.
-6. Analysis!
+6. Annotate the methylated positions.
+6. Further analysis!
 
 Trimming
 --------
 Most people use Trimmomatic for this step... not me. I prefer cutadapt for finer control over trimming sequences.
 
 Over the years, I wrote a shell script (``cutadapt_hiseq.sh``) to automate this step. Justifications for non-default cutoffs:
-- -O 10: the default of -O 3 was too... easy to trim off, there's a 1/64 chance that the end of any read would look like the first three bases of the adapter. I raised it to 10 through trial-and-error: I observed that the number of reads with 10+ bp of adapter sequence is several orders above the expected number by chance.
-- -q 20,20: trims both ends of the reads if they're Phred < 20.
-- --trim-n: removes flanking Ns at the ends of sequences.
+
+1. -O 10: the default of -O 3 was too... easy to trim off, there's a 1/64 chance that the end of any read would look like the first three bases of the adapter. I raised it to 10 through trial-and-error: I observed that the number of reads with 10+ bp of adapter sequence is several orders above the expected number by chance.
+
+2. -q 20,20: trims both ends of the reads if they're Phred < 20.
+
+3. --trim-n: removes flanking Ns at the ends of sequences.
 
 Anything reasonable is fine, really. This step won't dictate the end result.
 
@@ -79,9 +84,9 @@ Based on the deduplicated bam (or not), call # of methylated reads and unmethyla
 
 Note that the reason I use ``--bedGraph --counts`` is to get the file that ends with ``*.cov``.
 
-This stage produces a lot of intermediate files--I keep the results (*.cov) and log files (*.png, *.M-bias.txt, *_splitting_report.txt), and delete the rest (C*.txt, *.bed). You'll get what I mean once you run it once.
+This stage produces a lot of intermediate files--I keep the results (``*.cov``) and log files (``*.png``, ``*.M-bias.txt``, ``*_splitting_report.txt``), and delete the rest (``C*.txt``, ``*.bed``). You'll get what I mean once you run it once.
 
-Why keep *.cov and discard *.bed? Well, that's because my scripts work on the former but not the latter. Design choice, unfortunately.
+Why keep ``*.cov`` and discard ``*.bed``? Well, that's because my scripts work on the former but not the latter. Design choice, unfortunately.
 
 From this point onwards, what you're reading is no longer Bismark--it's my stuff, with my cutoffs, with my ideas. Alter these things to taste.
 
@@ -103,9 +108,9 @@ b) Non-conversion of the unmethylated cytosine (i.e. bisulphite treatment was su
 
 In my work, I chose an extremely conservative error rate of 1%. I prefer to deal with fewer real stuff than more stuff that might not be real.
 
-Given a composition of x methylated and y non-methylated reads at a certain position, one can calculate the probability of the observation arising purely by chance. I wrote a script (``filter_miscalled_Cs.py``) to apply binomial theorem and calculate P(X >= x); where P(X = x) = (x+y choose x) * 0.01^x * 0.99^y, and correct the P value with B-H. This script is run AFTER filtering the original .cov files for positions that have AT LEAST one methylation event (it's pointless to deal with the 95% CpGs that are not methylated--Benjamini-Hochberg correction is carried out on this filtered subset, not the entire dataset).
+Given a composition of x methylated and y non-methylated reads at a certain position, one can calculate the probability of the observation arising purely by chance. I wrote a script (``filter_miscalled_Cs.py``) to apply binomial theorem and calculate P(X >= x); where P(X = x) = [(x+y) choose x] * 0.01^x * 0.99^y, and correct the P value with B-H. To be pedantic, the script automatically discards positions that are not methylated, then applies Benjamini-Hochberg correction on positions that has at least one methylated read.
 
-For the implementation steps, the input filenames can be changed to your files of interest, but the output filenames are mandatory--``filter_pos.four_criteria.py`` uses a lot of hardcoded filenames. Using blah1.cov, blah2.cov, blah3.cov as generic inputs, run these commands in the same directory as the files:
+For the implementation steps, the input filenames can be changed to your files of interest, but the output filenames are mandatory--``filter_pos.four_criteria.py`` uses a lot of hardcoded filenames. Using ``blah1.cov``, ``blah2.cov``, ``blah3.cov`` as generic inputs, run these commands in the same directory as the files:
 
 1. Run ``tabulate_tsvs.py`` to merge the Bismark cov files into a giant table.
 tabulate_tsvs.py blah1.cov blah2.cov blah3.cov -k 0 1 -c 4 5 -v > compiled_coverage.pre_filt.meth_unmeth.tsv
@@ -123,11 +128,11 @@ tabulate_tsvs.py blah1.cov blah2.cov blah3.cov -k 0 1 -c 4 5 -v > compiled_cover
 
 6. Save the script, and run ``filter_pos.four_criteria.py``.
 
-The script picks out significant positions in all of the *.cov files, producing a *.filt.cov file per *.cov file fed into the script.
+The script picks out significant positions in all of the ``*.cov`` files, producing a ``*.filt.cov`` file per ``*.cov`` file fed into the script.
 
 Annotation of methylated positions
 ----------------------------------
-SANITY CHECK: *.filt.cov should all have the same number of lines.
+SANITY CHECK: ``*.filt.cov`` should all have the same number of lines.
 ``wc -l *.filt.cov``
 
 DO NOT PASS GO, DO NOT COLLECT $200 IF THIS IS NOT SATISFIED.
@@ -146,12 +151,12 @@ If things work, great! As all files have the same number of lines and the same p
 
 What's next?
 ------------
-Well, this place is a good point to let your hand go. With the *.filt.annot.cov files, you can do a lot of wonderful stuff. ``head`` or ``less`` the files to see what's inside them. If you don't understand which column stores what information, read the scripts that produced them. I (mostly) documented their functions as comments that precede the script itself.
+Well, this place is a good point to let your hand go. With the ``*.filt.annot.cov`` files, you can do a lot of wonderful stuff. ``head`` or ``less`` the files to see what's inside them. If you don't understand which column stores what information, read the scripts that produced them. I (mostly) documented their functions as comments that precede the script itself.
 
 A few analysis suggestions below:
 
-1. PCA of all *.filt.annot.cov files to see whether related replicates have more similar methylation patterns?
+1. PCA of all ``*.filt.annot.cov`` files to see whether related replicates have more similar methylation patterns?
 
-2. Check genomic distribution of methylated positions using *.filt.annot.cov (are there more methylated positions in genic regions? More in exonic regions? Start of exonic regions?)
+2. Check genomic distribution of methylated positions using ``*.filt.annot.cov`` (are there more methylated positions in genic regions? More in exonic regions? Start of exonic regions?)
 
 3. Start thinking about how to compare replicates to obtain differentially expressed genes/regions/etc. I'll probably discuss this in a separate document--there's so many things I could talk about this!
