@@ -17,10 +17,10 @@ Pipeline, TLDR
 1. Trim FASTQ files prior to mapping.
 2. Use ``Bismark`` + ``Bowtie2`` for mapping.
 3. Run ``deduplicate_bismark`` to remove duplicated reads (PCR artefacts).
-4. Run ``bismark_methylation_extractor`` to produce .cov files used in downstream analysis.
+4. Run ``bismark_methylation_extractor`` to produce ``*.cov`` files used in downstream analysis.
 5. Filter for methylated positions that are unlikely to arise due to chance.
 6. Annotate the methylated positions.
-6. Further analysis!
+7. Further analysis!
 
 Trimming
 --------
@@ -36,10 +36,13 @@ Over the years, I wrote a shell script (``cutadapt_hiseq.sh``) to automate this 
 
 Anything reasonable is fine, really. This step won't dictate the end result.
 
-Example commands
+Typical usage:
 
-Typical usage: ``$ cutadapt-hiseq.sh ATCATG blah_R1.gz blah_R2.gz``
-Ultra lazy mode when barcode is in filename: ``$ for a in *R1.fastq.gz; do b=`echo $a | grep -Po '_\w{6}_' | sed 's/_//g'`; cutadapt-hiseq.sh $b $a ${a/R1/R2}; done``
+``$ cutadapt-hiseq.sh ATCATG blah_R1.gz blah_R2.gz``
+
+Ultra lazy mode when barcode is in filename:
+
+``$ for a in *R1.fastq.gz; do b=`echo $a | grep -Po '_\w{6}_' | sed 's/_//g'`; cutadapt-hiseq.sh $b $a ${a/R1/R2}; done``
 
 Mapping
 -------
@@ -52,19 +55,19 @@ I'm very used to writing loops to map everything in a folder, but it makes for t
 
 1. Genome preparation
 
-This command assumes that bowtie2 can be called directly on the command line. If it doesn't work, then look into the ``--path_to_bowtie`` command.
+   This command assumes that bowtie2 can be called directly on the command line. If it doesn't work, then look into the ``--path_to_bowtie`` command.
 
-Genome file has sit in a folder of its own. Use symlinks within the folder to save space.
+   Genome file has to sit in a folder of its own. Use symlinks within the folder to save space.
 
-``$ ~/tools/bismark_v0.17.0/bismark_genome_preparation --verbose --bowtie2 .``
+   ``$ ~/tools/bismark_v0.17.0/bismark_genome_preparation --verbose --bowtie2 .``
 
 2. Running Bismark
 
-``$ ~/tools/bismark_v0.17.0/bismark relative/path/to/prepared/genome --bowtie2 --score_min L,0,-0.6 -1 blah_R1.trim.gz -2 blah_R2.trim.gz -p 12 --bam``
+   ``$ ~/tools/bismark_v0.17.0/bismark relative/path/to/prepared/genome --bowtie2 --score_min L,0,-0.6 -1 blah_R1.trim.gz -2 blah_R2.trim.gz -p 12 --bam``
 
-Of all the commands here, the ``--score_min`` stands out as the unexplainable non-default. This exact command was suggested by the program creator in one of the forum posts when someone complained they obtained very low mapping rates for their data. This equation controls how "loose" the mapping should be--and from testing, I can vouch that this cutoff strikes a good balance between sensitivity and accuracy. ``--score_min`` is a Bowtie2 parameter, read its docs if you want to know what it means EXACTLY.
+   Of all the commands here, the ``--score_min`` stands out as the unexplainable non-default. This exact command was suggested by the program creator in one of the forum posts when someone complained they obtained very low mapping rates for their data. This equation controls how "loose" the mapping should be--and from testing, I can vouch that this cutoff strikes a good balance between sensitivity and accuracy. ``--score_min`` is a Bowtie2 parameter, read its docs if you want to know what it means EXACTLY.
 
-In this pipeline, ``--score_min`` is the BIGGEST determinant of the results. This is the one thing I'll optimise if my results look weird.
+   In this pipeline, ``--score_min`` is the BIGGEST determinant of the results. This is the one thing I'll optimise if my results look weird.
 
 Deduplication
 -------------
@@ -94,8 +97,8 @@ Filtering for bona fide methylation
 -----------------------------------
 I'll talk about the theory first, then the implementation. This process is a bit convoluted, but the basic idea of a methylated position is one that:
 
-I. Is well-covered across all treatments.
-II. Is present in all treatments (similar to (1)).
+I. Is well-covered across all treatments (typically defined as median coverage >= 10)
+II. Is present in all treatments (similar to criteria I in idea, typically defined as minimum coverage >= 1).
 III. Is methylated in all replicates of a biologically meaningful treatment.
 IV. When pooled, is significantly methylated.
 
@@ -113,16 +116,20 @@ Given a composition of x methylated and y non-methylated reads at a certain posi
 For the implementation steps, the input filenames can be changed to your files of interest, but the output filenames are mandatory--``filter_pos.four_criteria.py`` uses a lot of hardcoded filenames. Using ``blah1.cov``, ``blah2.cov``, ``blah3.cov`` as generic inputs, run these commands in the same directory as the files:
 
 1. Run ``tabulate_tsvs.py`` to merge the Bismark cov files into a giant table.
-tabulate_tsvs.py blah1.cov blah2.cov blah3.cov -k 0 1 -c 4 5 -v > compiled_coverage.pre_filt.meth_unmeth.tsv
+
+   ``$ tabulate_tsvs.py blah1.cov blah2.cov blah3.cov -k 0 1 -c 4 5 -v > compiled_coverage.pre_filt.meth_unmeth.tsv``
 
 2. gzip-compress this giant file.
-``gzip compiled_coverage.pre_filt.meth_unmeth.tsv``
+
+   ``$ gzip compiled_coverage.pre_filt.meth_unmeth.tsv``
 
 3. Merge all .cov files produced by Bismark into one giant file.
-``merge_bismark_cov.py blah1.cov blah2.cov blah3.cov > all.merged.cov``
+
+   ``$ merge_bismark_cov.py blah1.cov blah2.cov blah3.cov > all.merged.cov``
 
 4. Run ``filter_miscalled_Cs.py`` on this merged file for Criteria IV.
-``filter_miscalled_Cs.py all.merged.cov > all.bona_fide_meth_pos.cov``
+
+   ``$ filter_miscalled_Cs.py all.merged.cov > all.bona_fide_meth_pos.cov``
 
 5. Edit lines 71--89 of ``filter_pos.four_criteria.py`` to specify which columns are replicates of a meaningful biological condition (criteria III). To disable this, just delete these lines. Column numbering starts from 0. My comments in the script and the lines of code match up well, you should be able to figure out how to modify the script even if you do not write Python.
 
