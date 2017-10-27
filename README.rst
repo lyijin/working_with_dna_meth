@@ -140,20 +140,25 @@ The script picks out significant positions in all of the ``*.cov`` files, produc
 Annotation of methylated positions
 ----------------------------------
 SANITY CHECK: ``*.filt.cov`` should all have the same number of lines.
+
 ``wc -l *.filt.cov``
 
 DO NOT PASS GO, DO NOT COLLECT $200 IF THIS IS NOT SATISFIED.
 
 Collected your $200? Great. I suggest merging the filtered files first:
+
 ``merge_bismark_cov.py blah1.filt.cov blah2.filt.cov blah3.filt.cov > all.merged.filt.cov``
 
 Then annotate it using (replace <generic_filenames> with real stuff):
+
 ``annotate_bismark_cov.py <genome_fasta_file.fa> <gff_file.gff3> all.merged.filt.cov > all.merged.filt.annot.cov``
 
 It is VERY LIKELY that this won't work for you, because ``annotate_bismark_cov.py`` uses a self-written gff3 parser that works with the genomes that we assembled. You'll need to read and understand the code of ``parse_gff3.py`` and ``annotate_bismark_cov.py`` if errors appear. I'm afraid the further you swim away from the safe Bismark shores, the more rocks you'll hit!
 
 If things work, great! As all files have the same number of lines and the same positions in the same order (trust me), you can do some magic to annotate all your individual files:
+
 ``cut -f 7- all.merged.filt.annot.cov > tmp``
+
 ``paste blah1.filt.cov tmp > blah1.filt.annot.cov``
 
 What's next?
