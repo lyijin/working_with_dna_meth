@@ -65,9 +65,11 @@ I'm very used to writing loops to map everything in a folder, but it makes for t
 
    ``$ ~/tools/bismark_v0.17.0/bismark relative/path/to/prepared/genome --bowtie2 --score_min L,0,-0.6 -1 blah_R1.trim.gz -2 blah_R2.trim.gz -p 12 --bam``
 
-   Of all the commands here, the ``--score_min`` stands out as the unexplainable non-default. This exact command was suggested by the program creator in one of the forum posts when someone complained they obtained very low mapping rates for their data. This equation controls how "loose" the mapping should be--and from testing, I can vouch that this cutoff strikes a good balance between sensitivity and accuracy. ``--score_min`` is a Bowtie2 parameter, read its docs if you want to know what it means EXACTLY.
+   Of all the commands here, the ``--score_min`` stands out as the unexplainable non-default. This exact command was suggested by the program creator in one of the forum posts (http://seqanswers.com/forums/showthread.php?t=40496) when someone complained they obtained very low mapping rates for their data. This equation controls how "loose" the mapping should be--and from testing, I can vouch that this cutoff strikes a good balance between sensitivity and accuracy. ``--score_min`` is a Bowtie2 parameter, read its docs if you want to know what it means EXACTLY.
+   
+   NOTE: ``bowtie2``'s default ``--score-min`` is ``L,-0.6,-0.6`` for end-to-end mapping. This default setting is OVERRIDDEN by ``bismark``--``bismark`` sets this parameter as ``L,0,-0.2`` if one does not override its defaults. We're basically overriding ``bismark``'s defaults to bring it more in line with ``bowtie2``'s default setting.
 
-   In this pipeline, ``--score_min`` is the BIGGEST determinant of the results. This is the one thing I'll optimise if my results look weird.
+   In this pipeline, ``--score_min`` is the BIGGEST determinant of the results. This is the one thing I'll optimise if my results look weird. If mapping rates are really low (< 20%), I suggest using ``L,0,-0.9`` or ``L,0,-1.2``.
 
 Deduplication
 -------------
