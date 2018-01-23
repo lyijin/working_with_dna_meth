@@ -119,7 +119,7 @@ For the implementation steps, the input filenames can be changed to your files o
 
 1. Run ``tabulate_tsvs.py`` to merge the Bismark cov files into a giant table.
 
-   ``$ tabulate_tsvs.py blah1.cov blah2.cov blah3.cov -k 0 1 -c 4 5 -v > compiled_coverage.pre_filt.meth_unmeth.tsv``
+   ``$ tabulate_tsvs.py blah1.cov blah2.cov blah3.cov -k 0 1 -c 4 5 -v > compiled_coverage.pre-filt.meth_unmeth.tsv``
 
 2. gzip-compress this giant file.
 
