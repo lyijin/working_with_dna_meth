@@ -4,13 +4,13 @@ Studying the methylome of <insert cool organism>
 
 This pipeline relies on Bowtie2 for mapping, Bismark to do methylation calls, and my scripts to process the Bismark results, so get them installed before you follow the pipeline.
 
-1. Bowtie2: preferably installed via package manager ("apt install bowtie2").
+1. Bowtie2: preferably installed via package manager (e.g. ``apt install bowtie2``).
 
 2. Bismark: https://www.bioinformatics.babraham.ac.uk/projects/bismark/, "Download Now".
 
 Remember to cite both tools when you write your manuscript.
 
-3. python3: preferably installed via package manager ("apt install python3"). DO NOT USE PYTHON 2!!!
+3. python3: preferably installed via package manager (e.g. ``apt install python3``). DO NOT USE PYTHON 2!!!
 
 Pipeline, TLDR
 --------------
@@ -28,21 +28,21 @@ Most people use Trimmomatic for this step... not me. I prefer cutadapt for finer
 
 Over the years, I wrote a shell script (``cutadapt_hiseq.sh``) to automate this step. Justifications for non-default cutoffs:
 
-1. -O 10: the default of -O 3 was too... easy to trim off, there's a 1/64 chance that the end of any read would look like the first three bases of the adapter. I raised it to 10 through trial-and-error: I observed that the number of reads with 10+ bp of adapter sequence is several orders above the expected number by chance.
+1. ``-O 10``: the default of -O 3 was too... easy to trim off, there's a 1/64 chance that the end of any read would look like the first three bases of the adapter. I raised it to 10 through trial-and-error: I observed that the number of reads with 10+ bp of adapter sequence is several orders above the expected number by chance.
 
-2. -q 20,20: trims both ends of the reads if they're Phred < 20.
+2. ``-q 20,20``: trims both ends of the reads if they're Phred < 20.
 
-3. --trim-n: removes flanking Ns at the ends of sequences.
+3. ``--trim-n``: removes flanking Ns at the ends of sequences.
 
 Anything reasonable is fine, really. This step won't dictate the end result.
 
 Typical usage:
 
-``$ cutadapt-hiseq.sh ATCATG blah_R1.gz blah_R2.gz``
+``cutadapt-hiseq.sh ATCATG blah_R1.gz blah_R2.gz``
 
 Ultra lazy mode when barcode is in filename:
 
-``$ for a in *R1.fastq.gz; do b=`echo $a | grep -Po '_\w{6}_' | sed 's/_//g'`; cutadapt-hiseq.sh $b $a ${a/R1/R2}; done``
+``for a in *R1.fastq.gz; do b=`echo $a | grep -Po '_\w{6}_' | sed 's/_//g'`; cutadapt-hiseq.sh $b $a ${a/R1/R2}; done``
 
 Mapping
 -------
@@ -55,19 +55,21 @@ I'm very used to writing loops to map everything in a folder, but it makes for t
 
 1. Genome preparation
 
-   This command assumes that bowtie2 can be called directly on the command line. If it doesn't work, then look into the ``--path_to_bowtie`` command.
+   This command assumes that ``bowtie2`` can be called directly on the command line. If it doesn't work, then look into the ``--path_to_bowtie`` command.
 
    Genome file has to sit in a folder of its own. Use symlinks within the folder to save space.
 
-   ``$ ~/tools/bismark_v0.17.0/bismark_genome_preparation --verbose --bowtie2 .``
+   ``~/tools/bismark_v0.17.0/bismark_genome_preparation --verbose --bowtie2 .``
 
 2. Running Bismark
 
-   ``$ ~/tools/bismark_v0.17.0/bismark relative/path/to/prepared/genome --bowtie2 --score_min L,0,-0.6 -1 blah_R1.trim.gz -2 blah_R2.trim.gz -p 12 --bam``
+   ``~/tools/bismark_v0.17.0/bismark relative/path/to/prepared/genome --bowtie2 --score_min L,0,-0.6 -1 blah_R1.trim.gz -2 blah_R2.trim.gz -p 12 --bam``
 
-   Of all the commands here, the ``--score_min`` stands out as the unexplainable non-default. This exact command was suggested by the program creator in one of the forum posts (http://seqanswers.com/forums/showthread.php?t=40496) when someone complained they obtained very low mapping rates for their data. This equation controls how "loose" the mapping should be--and from testing, I can vouch that this cutoff strikes a good balance between sensitivity and accuracy. ``--score_min`` is a Bowtie2 parameter, read its docs if you want to know what it means EXACTLY.
-   
-   NOTE: ``bowtie2``'s default ``--score-min`` is ``L,-0.6,-0.6`` for end-to-end mapping. This default setting is OVERRIDDEN by ``bismark``--``bismark`` sets this parameter as ``L,0,-0.2`` if one does not override its defaults. We're basically overriding ``bismark``'s defaults to bring it more in line with ``bowtie2``'s default setting.
+   Of all the commands here, the ``--score_min`` stands out as the unexplainable non-default. This exact command was suggested by the program creator in one of the forum posts (http://seqanswers.com/forums/showthread.php?t=40496) when someone complained they obtained very low mapping rates for their data.
+
+      "you haven't mentioned the read length or the genome you are working with, is it a good assembly or still quite rough? Do you expect many SNPs? Do you expect insertions or deletions in the reads? In any case I would try running Bismark in Bowtie 2 mode (--bowtie2), which allows mapping with InDels and also has a function (--score_min) for the number of mismatches and/or InDels that scales with the read length. This is set very stringently by default (L,0,-0.2), but could be relaxed somewhat to see if this helps your mapping efficiency. As a guideline, --score_min L,0,-0.2 would allow ~3 mismatches for a 100bp read, --score_min L,0,-0.6 would allow up to 10 mismatches and/or Indels. If you just want to test these things you can use the -u option to just use a subset of the reads."
+
+   ``--score-min`` controls how "loose" the mapping should be--and from testing, I can vouch that this cutoff strikes a good balance between sensitivity and accuracy. ``--score_min`` is a Bowtie2 parameter, read its docs if you want to know what it means EXACTLY. To pre-empt a bit of confusion if you actually DO read the docs, Bowtie2's default ``--score-min`` is ``L,-0.6,-0.6`` for end-to-end mapping. This default setting is OVERRIDDEN by ``bismark``--``bismark`` sets this parameter as ``L,0,-0.2`` if one does not override its defaults. We're basically overriding ``bismark``'s defaults to bring it more in line with ``bowtie2``'s default setting.
 
    In this pipeline, ``--score_min`` is the BIGGEST determinant of the results. This is the one thing I'll optimise if my results look weird. If mapping rates are really low (< 20%), I suggest using ``L,0,-0.9`` or ``L,0,-1.2``.
 
@@ -77,13 +79,13 @@ For MOST cases, you want to deduplicate your reads to get rid of PCR duplicates.
 
 To be pedantic, this script works by checking whether the start and the end coordinate of the mapped read coincides with any other read. If it does, it gets discarded. Other deduplication methods CAN BE different, don't assume all deduplication methods would produce the same end product.
 
-``$ ~/tools/bismark_v0.17.0/deduplicate_bismark --bam -p blah_R1.trim_bismark_bt2_pe.bam``
+``~/tools/bismark_v0.17.0/deduplicate_bismark --bam -p blah_R1.trim_bismark_bt2_pe.bam``
 
 Methylation calling
 -------------------
 Based on the deduplicated bam (or not), call # of methylated reads and unmethylated reads on a per-position basis.
 
-``$ ~/tools/bismark_v0.17.0/bismark_methylation_extractor -p --bedGraph --counts --scaffolds --multicore 8 blah_R1.trim_bismark_bt2_pe.deduplicated.bam``
+``~/tools/bismark_v0.17.0/bismark_methylation_extractor -p --bedGraph --counts --scaffolds --multicore 8 blah_R1.trim_bismark_bt2_pe.deduplicated.bam``
 
 (the filenames are intentional: bismark automatically generates the name of the output files, so it gets longer and longer and longer...)
 
@@ -95,8 +97,8 @@ Why keep ``*.cov`` and discard ``*.bed``? Well, that's because my scripts work o
 
 From this point onwards, what you're reading is no longer Bismark--it's my stuff, with my cutoffs, with my ideas. Alter these things to taste.
 
-Filtering for bona fide methylation
------------------------------------
+Filtering for *bona fide* methylation
+-------------------------------------
 I'll talk about the theory first, then the implementation. This process is a bit convoluted, but the basic idea of a methylated position is one that:
 
 I. Is well-covered across all treatments (typically defined as median coverage >= 10)
@@ -113,25 +115,25 @@ b) Non-conversion of the unmethylated cytosine (i.e. bisulphite treatment was su
 
 In my work, I chose an extremely conservative error rate of 1%. I prefer to deal with fewer real stuff than more stuff that might not be real.
 
-Given a composition of x methylated and y non-methylated reads at a certain position, one can calculate the probability of the observation arising purely by chance. I wrote a script (``filter_miscalled_Cs.py``) to apply binomial theorem and calculate P(X >= x); where P(X = x) = [(x+y) choose x] * 0.01^x * 0.99^y, and correct the P value with B-H. To be pedantic, the script automatically discards positions that are not methylated, then applies Benjamini-Hochberg correction on positions that has at least one methylated read.
+Given a composition of x methylated and y non-methylated reads at a certain position, one can calculate the probability of the observation arising purely by chance. I wrote a script (``filter_miscalled_Cs.py``) to apply binomial theorem and calculate P(X >= x); where P(X = x) = \ :sup:`x+y` C \ :sub:`x` * 0.01\ :sup:`x` * 0.99\ :sup:`y`, and correct the P value with B-H. To be pedantic, the script automatically discards positions that are not methylated, then applies Benjamini-Hochberg correction on positions that has at least one methylated read.
 
 For the implementation steps, the input filenames can be changed to your files of interest, but the output filenames are mandatory--``filter_pos.four_criteria.py`` uses a lot of hardcoded filenames. Using ``blah1.cov``, ``blah2.cov``, ``blah3.cov`` as generic inputs, run these commands in the same directory as the files:
 
 1. Run ``tabulate_tsvs.py`` to merge the Bismark cov files into a giant table.
 
-   ``$ tabulate_tsvs.py blah1.cov blah2.cov blah3.cov -k 0 1 -c 4 5 -v > compiled_coverage.pre-filt.meth_unmeth.tsv``
+   ``tabulate_tsvs.py blah1.cov blah2.cov blah3.cov -k 0 1 -c 4 5 -v > compiled_coverage.pre-filt.meth_unmeth.tsv``
 
 2. gzip-compress this giant file.
 
-   ``$ gzip compiled_coverage.pre_filt.meth_unmeth.tsv``
+   ``gzip compiled_coverage.pre_filt.meth_unmeth.tsv``
 
 3. Merge all .cov files produced by Bismark into one giant file.
 
-   ``$ merge_bismark_cov.py blah1.cov blah2.cov blah3.cov > all.merged.cov``
+   ``merge_bismark_cov.py blah1.cov blah2.cov blah3.cov > all.merged.cov``
 
 4. Run ``filter_miscalled_Cs.py`` on this merged file for Criteria IV.
 
-   ``$ filter_miscalled_Cs.py all.merged.cov > all.bona_fide_meth_pos.cov``
+   ``filter_miscalled_Cs.py all.merged.cov > all.bona_fide_meth_pos.cov``
 
 5. Edit lines 71--89 of ``filter_pos.four_criteria.py`` to specify which columns are replicates of a meaningful biological condition (criteria III). To disable this, just delete these lines. Column numbering starts from 0. My comments in the script and the lines of code match up well, you should be able to figure out how to modify the script even if you do not write Python.
 
@@ -145,7 +147,7 @@ SANITY CHECK: ``*.filt.cov`` should all have the same number of lines.
 
 ``wc -l *.filt.cov``
 
-DO NOT PASS GO, DO NOT COLLECT $200 IF THIS IS NOT SATISFIED.
+**DO NOT PASS GO, DO NOT COLLECT $200 IF THIS IS NOT SATISFIED.**
 
 Collected your $200? Great. I suggest merging the filtered files first:
 
@@ -173,4 +175,6 @@ A few analysis suggestions below:
 
 2. Check genomic distribution of methylated positions using ``*.filt.annot.cov`` (are there more methylated positions in genic regions? More in exonic regions? Start of exonic regions?)
 
-3. Start thinking about how to compare replicates to obtain differentially expressed genes/regions/etc. I'll probably discuss this in a separate document--there's so many things I could talk about this!
+3. Start thinking about how to compare replicates to obtain differentially expressed genes/regions/etc.
+
+An example of how I used the methylation data generated by this pipeline can be found at https://github.com/lyijin/pdae_dna_meth, where I analysed methylation patterns in the coral *Platygyra daedalea*.
