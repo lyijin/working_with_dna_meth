@@ -24,6 +24,12 @@ Pipeline, TLDR
 
 Trimming
 --------
+UPDATE MAR 2020: Nowadays, I use ``trim_galore`` (which calls ``cutadapt``--I always knew it was the superior choice when the former didn't exist :p ) to automate trimming without needing to confirm barcode sequences. Barcode sequences are hard to find when dealing with public datasets. I'll archive my old methodology here, but I reiterate my recommendation of `trim_galore` (same author as Bismark anyway).
+
+https://github.com/FelixKrueger/TrimGalore
+
+Previous advice
+===============
 Most people use Trimmomatic for this step... not me. I prefer cutadapt for finer control over trimming sequences.
 
 Over the years, I wrote a shell script (``cutadapt_hiseq.sh``) to automate this step. Justifications for non-default cutoffs:
@@ -46,8 +52,7 @@ Ultra lazy mode when barcode is in filename:
 
 Mapping
 -------
-Here's the gospel that gets updated periodically:
-https://www.bioinformatics.babraham.ac.uk/projects/bismark/Bismark_User_Guide.pdf
+Here's the gospel that gets updated periodically: https://github.com/FelixKrueger/Bismark/tree/master/Docs
 
 If my advice clashes with his, trust him. RTFM.
 
