@@ -24,7 +24,7 @@ Pipeline, TLDR
 
 Trimming
 --------
-UPDATE MAR 2020: Nowadays, I use ``trim_galore`` (which calls ``cutadapt``--I always knew it was the superior choice when the former didn't exist :p ) to automate trimming without needing to confirm barcode sequences. Barcode sequences are hard to find when dealing with public datasets. I'll archive my old methodology here, but I reiterate my recommendation of `trim_galore` (same author as Bismark anyway).
+UPDATE MAR 2020: Nowadays, I use ``trim_galore`` (which calls ``cutadapt``--I always knew it was the superior choice when the former didn't exist :p ) to automate trimming without needing to confirm barcode sequences. Barcode sequences are hard to find when dealing with public datasets. I'll archive my old methodology here, but I reiterate my recommendation of ``trim_galore`` (same author as Bismark anyway).
 
 https://github.com/FelixKrueger/TrimGalore
 
